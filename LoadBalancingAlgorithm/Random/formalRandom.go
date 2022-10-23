@@ -22,16 +22,16 @@ func InRange(min, max int64) int64 {
 
 // New 使用 Round-Robin 创建一个新的负载均衡器实例
 func New(opts ...Balancer.Opt) Balancer.Balancer {
-	return (&randomS{}).Init(opts...)
+	return (&Random{}).Init(opts...)
 }
 
-type randomS struct {
+type Random struct {
 	peers []Balancer.Peer
 	count int64
 	rw    sync.RWMutex
 }
 
-func (s *randomS) Init(opts ...Balancer.Opt) *randomS {
+func (s *Random) Init(opts ...Balancer.Opt) *Random {
 	for _, opt := range opts {
 		opt(s)
 	}
@@ -39,7 +39,7 @@ func (s *randomS) Init(opts ...Balancer.Opt) *randomS {
 }
 
 // 实现了Balancer.NexT()方法
-func (s *randomS) Next(factor Balancer.Factor) (next Balancer.Peer, c Balancer.Constrainable) {
+func (s *Random) Next(factor Balancer.Factor) (next Balancer.Peer, c Balancer.Constrainable) {
 	next = s.miniNext()
 
 	if fc, ok := factor.(Balancer.FactorComparable); ok {
@@ -52,14 +52,14 @@ func (s *randomS) Next(factor Balancer.Factor) (next Balancer.Peer, c Balancer.C
 }
 
 // 实现了Balancer.Count()方法
-func (s *randomS) Count() int {
+func (s *Random) Count() int {
 	s.rw.RLock()
 	defer s.rw.RUnlock()
 	return len(s.peers)
 }
 
 // 实现了Balancer.Add()方法
-func (s *randomS) Add(peers ...Balancer.Peer) {
+func (s *Random) Add(peers ...Balancer.Peer) {
 	for _, p := range peers {
 		// 判断要添加的元素是否存在，并且在添加元素的时候为s.peers 加锁
 		s.AddOne(p)
@@ -69,7 +69,7 @@ func (s *randomS) Add(peers ...Balancer.Peer) {
 // 实现了Balancer.Remove()方法
 // 如果 s.peers 中间有和传入的peer相等的函数就那么就删除这个元素
 // 在删除这个元素的时候，
-func (s *randomS) Remove(peer Balancer.Peer) {
+func (s *Random) Remove(peer Balancer.Peer) {
 	// 加写锁
 	s.rw.Lock()
 	defer s.rw.Unlock()
@@ -82,7 +82,7 @@ func (s *randomS) Remove(peer Balancer.Peer) {
 }
 
 // 实现了Balancer.Clear()方法
-func (s *randomS) Clear() {
+func (s *Random) Clear() {
 	// 加写锁
 	// 对于Set() ,Delete(),Update()这类操作就一般都是加写锁
 	// 对于Get() 这类操作我们往往是加读锁，阻塞对同一变量的更改操作，但是读操作将不会受到影响
@@ -93,7 +93,7 @@ func (s *randomS) Clear() {
 
 // 我们希望s在返回后端peers 节点的时候，在同一个时刻只能被一个线程拿到。
 // 所以需要对 s.peers进行加锁
-func (s *randomS) miniNext() (next Balancer.Peer) {
+func (s *Random) miniNext() (next Balancer.Peer) {
 	// 读锁定 写将被阻塞，读不会被锁定
 	s.rw.RLock()
 	defer s.rw.RUnlock()
@@ -104,7 +104,7 @@ func (s *randomS) miniNext() (next Balancer.Peer) {
 	return
 }
 
-func (s *randomS) AddOne(peer Balancer.Peer) {
+func (s *Random) AddOne(peer Balancer.Peer) {
 	if s.find(peer) {
 		return
 	}
@@ -116,7 +116,7 @@ func (s *randomS) AddOne(peer Balancer.Peer) {
 	fmt.Printf(peer.String() + "is be appended!\n")
 }
 
-func (s *randomS) find(peer Balancer.Peer) (found bool) {
+func (s *Random) find(peer Balancer.Peer) (found bool) {
 	// 加读锁
 	s.rw.RLock()
 	defer s.rw.RUnlock()
@@ -134,7 +134,7 @@ func Client() {
 	wg := sync.WaitGroup{}
 	// 假设我们有20个不同的客户端（goroutinue）去调用我们的服务
 	wg.Add(20)
-	lb := &randomS{
+	lb := &Random{
 		peers: []Balancer.Peer{
 			Balancer.ExP("172.16.0.10:3500"), Balancer.ExP("172.16.0.11:3500"), Balancer.ExP("172.16.0.12:3500"),
 		},
