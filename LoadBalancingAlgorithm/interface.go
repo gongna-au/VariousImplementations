@@ -77,7 +77,8 @@ func (s FactorString) Factor() string {
 // 默认类 FactorString的实例
 const DummyFactor FactorString = ""
 
-//FactorComparable是组装Factor和约束比较的复合接口
+// FactorComparable是组装Factor和约束比较的复合接口
+// 被传递给具体实现 Balancer.Next() 函数
 type FactorComparable interface {
 	Factor
 	ConstrainedBy(constraints interface{}) (peer Peer, c Constrainable, satisfied bool)
