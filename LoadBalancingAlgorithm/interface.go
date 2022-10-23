@@ -1,4 +1,4 @@
-package Balancer
+package LoadBalancingAlgorithm
 
 import "reflect"
 

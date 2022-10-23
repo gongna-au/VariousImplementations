@@ -3,7 +3,7 @@ package Random
 //正式的 random LB 的代码要比上面的核心部分还复杂一点点。原因在于我们还需要达成另外两个设计目标：
 import (
 	"fmt"
-	"github.com/VariousImplementations/LoadBalancingAlgorithm/Random/Balancer"
+	Balancer "github.com/VariousImplementations/LoadBalancingAlgorithm"
 	mrand "math/rand"
 	"strconv"
 	"sync"
