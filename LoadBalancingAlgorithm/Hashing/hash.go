@@ -86,6 +86,7 @@ func (s *HashKetama) Next(factor Balancer.Factor) (next Balancer.Peer, c Balance
 		// 调用hasher 处理父类实例
 		// factor.Factor() 把请求"https://abc.local/user/profile"
 		hash = s.hasher([]byte(factor.Factor()))
+		fmt.Printf("Hash code is %d\n", hash)
 		// s.hasher([]byte(factor.Factor()))本质是 crc32.ChecksumIEEE()函数处理得到的[]byte类型的string
 		// 所以重点是crc32.ChecksumIEEE()如何把[]byte转化wei hash code 的
 		// 哈希Hash，就是把任意长度的输入，通过散列算法，变换成固定长度的输出，该输出就是散列值。
