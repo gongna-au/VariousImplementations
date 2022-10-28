@@ -128,3 +128,13 @@ func TestRemainTimeLessThanZero(t *testing.T) {
 		t.Error("40m less than 0m")
 	}
 }
+
+func TestTimeDurationAdd(t *testing.T) {
+	d, err := TimeDurationFormat("0m")
+	if err != nil {
+		t.Error(err)
+	}
+	result := TimeDurationAdd(d, "20m")
+	fmt.Println(result)
+
+}

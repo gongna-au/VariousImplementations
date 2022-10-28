@@ -9,69 +9,19 @@ import (
 	"github.com/VariousImplementations/SecondarySchedue/pkg"
 )
 
-// 具体的work
-type Work struct {
-	Id int
-	// 到达时间
-	ArriveTime time.Time
-	// 进入内存的时间
-	ArriveMemoryTime time.Time
-	// 第一次开始执行的时间
-	StartTime time.Time
-	// 上一次执行结束的时间 , 也就是被暂停的时间点
-	StopTime time.Time
-	// 结束时间
-	OverTime time.Time
-	// 需要的执行时间
-	ExcuteTime time.Duration
-	// 剩余执行时间
-	RemainingExecuteTime time.Duration
-	// 等待时间
-	WaitTime time.Duration
-	// 周转时间
-	RoundTime time.Duration
-	// 级别
-	Level int
-	// 响应比
-	Excellent float64
-	//权重
-	Weights float64
-}
-
-func NewWork(id int, arriveTime string, excuteTime string, level int) *Work {
-	arrive, erra := pkg.TimeFormat(arriveTime)
-	excute, erre := pkg.TimeDurationFormat(excuteTime)
-	if erra != nil || erre != nil {
-		return nil
-	}
-
-	return &Work{
-		Id:                   id,
-		ArriveTime:           arrive,
-		ExcuteTime:           excute,
-		Level:                level,
-		RemainingExecuteTime: excute,
-		Weights:              0.00000000,
-	}
-}
-
-func OutPutWorksArriveTimeAndOverTime(w []*Work) {
-	for _, v := range w {
-		fmt.Printf("Id:%-2d ArriveTime:%-8v ArriveMemoryTime:%-8v OverTime:%-8v RoundTime %-8v Weights %-8.4f\n", v.Id, v.ArriveTime, v.ArriveMemoryTime, v.OverTime, v.RoundTime, v.Weights)
-	}
-}
-
-type SJF struct {
+// 两道批处理系统中基于优先数的调度算法计算结果
+// 作业调度采用最短作业优先 进程调度采用高响应比优先的抢占式调度算法
+type HRF struct {
 	SJFStartTime     time.Time
-	Works            []*Work
-	QueueNotInMemory []*Work
-	QueueInMemory    []*Work
-	QueueHasFinish   []*Work
+	Works            []*pkg.Work
+	QueueNotInMemory []*pkg.Work
+	QueueInMemory    []*pkg.Work
+	QueueHasFinish   []*pkg.Work
 	// 进度时间用来记录系统现在运行的时间点
 	ProgressTime time.Time
 }
 
-func NewSJF(w ...*Work) *SJF {
+func NewHRF(w ...*pkg.Work) *HRF {
 	var arrive time.Time
 	if len(w) == 0 {
 		arrive = time.Now()
@@ -80,18 +30,61 @@ func NewSJF(w ...*Work) *SJF {
 		w[0].ArriveMemoryTime = w[0].ArriveTime
 	}
 
-	return &SJF{
+	return &HRF{
 		SJFStartTime:     arrive,
-		Works:            append([]*Work{}, w...),
-		QueueNotInMemory: append([]*Work{}, w[1:]...),
-		QueueInMemory:    append([]*Work{}, w[0]),
-		QueueHasFinish:   []*Work{},
+		Works:            append([]*pkg.Work{}, w...),
+		QueueNotInMemory: append([]*pkg.Work{}, w[1:]...),
+		QueueInMemory:    append([]*pkg.Work{}, w[0]),
+		QueueHasFinish:   []*pkg.Work{},
 		ProgressTime:     arrive,
 	}
 }
 
+func (s *HRF) MarkHasArrivedWorkWaitTime(w []*pkg.Work) {
+	for _, v := range w {
+		v.WaitTime = pkg.TimeDurationAdd(v.WaitTime, "5m")
+	}
+}
+
+func (s *HRF) DeleteWorkNotInMemoryById(id int) {
+	var index int
+	for k, v := range s.QueueNotInMemory {
+		if v.Id == id {
+			index = k
+		}
+	}
+	if index == len(s.QueueNotInMemory)-1 {
+		s.QueueNotInMemory = s.QueueNotInMemory[:index]
+	} else {
+		s.QueueNotInMemory = append(s.QueueNotInMemory[:index], s.QueueNotInMemory[index+1:]...)
+	}
+}
+
+func (s *HRF) CalculateResponseRatio(w []*pkg.Work) {
+	for _, v := range w {
+		var minutes1 = v.WaitTime.Minutes()
+		var minutes2 = v.ExcuteTime.Minutes()
+		v.Excellent = float64(minutes1+minutes2) / float64(minutes2)
+	}
+}
+
+// 对于后续队列中已经到来的任务增加等待时间
+func (s *HRF) UpdateWaitTime() {
+	// 判断有没有作业到来
+	hasArrrice := []*pkg.Work{}
+	// 可以先排序再找
+	for _, v := range s.QueueNotInMemory {
+		if pkg.TimeCompare(v.ArriveTime, s.ProgressTime) == true {
+			hasArrrice = append(hasArrrice, v)
+		}
+	}
+	for _, v := range hasArrrice {
+		v.WaitTime = pkg.TimeDurationAdd(v.WaitTime, "5m")
+	}
+}
+
 // 在内存中没有作业的时候调用
-func (s *SJF) JudgeWorkhasCome() (*Work, bool) {
+func (s *HRF) JudgeWorkhasCome() (*pkg.Work, bool) {
 	// 先排序
 	if len(s.QueueNotInMemory) > 1 {
 		sort.Slice(s.QueueNotInMemory, func(i, j int) bool {
@@ -102,36 +95,39 @@ func (s *SJF) JudgeWorkhasCome() (*Work, bool) {
 			}
 		})
 	}
-
 	// 判断后续有没有作业到来
-	hasArrrice := []*Work{}
+	hasArrrice := []*pkg.Work{}
 	// 可以先排序再找
 	for _, v := range s.QueueNotInMemory {
 		if pkg.TimeCompare(v.ArriveTime, s.ProgressTime) == true {
 			hasArrrice = append(hasArrrice, v)
 		}
 	}
-
+	// 对于已经到达的任务，却没有被调度进入内存的任务需要等待
 	if len(hasArrrice) > 1 {
-		sort.Slice(s.QueueNotInMemory, func(i, j int) bool {
-			if int(s.QueueNotInMemory[i].RemainingExecuteTime) < int(s.QueueNotInMemory[j].RemainingExecuteTime) {
+		// 先计算出每个任务的响应比
+		s.CalculateResponseRatio(hasArrrice)
+		// 然后排序
+		sort.Slice(hasArrrice, func(i, j int) bool {
+			if hasArrrice[i].Excellent > hasArrrice[j].Excellent {
 				return true
 			} else {
 				return false
 			}
 		})
-		temp := s.QueueNotInMemory[0]
-		s.QueueNotInMemory = s.QueueNotInMemory[1:]
+		temp := hasArrrice[0]
+		// 本次循环也只是调度，并没有实际运行任何一个任务
+		//s.MarkHasArrivedWorkWaitTime(hasArrrice[1:])
+		s.DeleteWorkNotInMemoryById(temp.Id)
 		return temp, true
 	} else if len(hasArrrice) == 1 {
-
 		if len(s.QueueNotInMemory) > 1 {
-			temp := s.QueueNotInMemory[0]
-			s.QueueNotInMemory = s.QueueNotInMemory[1:]
+			temp := hasArrrice[0]
+			s.DeleteWorkNotInMemoryById(temp.Id)
 			return temp, true
 		} else {
 			temp := s.QueueNotInMemory[0]
-			s.QueueNotInMemory = []*Work{}
+			s.QueueNotInMemory = []*pkg.Work{}
 			return temp, true
 		}
 
@@ -142,14 +138,16 @@ func (s *SJF) JudgeWorkhasCome() (*Work, bool) {
 }
 
 // 现在有两个任务
-func (s *SJF) WorkInMemoryExcuteByLevel() {
+func (s *HRF) WorkInMemoryExcuteByLevel() {
 	sort.Slice(s.QueueInMemory, func(i, j int) bool {
+		// 进程调度都是基于--最短执行时间的可抢占式调度册罗
 		if int(s.QueueInMemory[i].RemainingExecuteTime) < int(s.QueueInMemory[j].RemainingExecuteTime) {
 			return true
 		} else {
 			return false
 		}
 	})
+
 	if pkg.RemainTimeLessThanZero(s.QueueInMemory[0].RemainingExecuteTime) == true {
 		// 放入完成的队列
 		s.QueueInMemory[0].OverTime = s.ProgressTime
@@ -158,6 +156,8 @@ func (s *SJF) WorkInMemoryExcuteByLevel() {
 
 	} else {
 		s.QueueInMemory[0].RemainingExecuteTime = pkg.Sub(s.QueueInMemory[0].RemainingExecuteTime, "5m")
+		// 每次拖动进度条，已经到来的任务就一定会等待
+		s.UpdateWaitTime()
 		s.ProgressTime = pkg.Add(s.ProgressTime, "5m")
 
 	}
@@ -165,31 +165,35 @@ func (s *SJF) WorkInMemoryExcuteByLevel() {
 }
 
 // 只有一个任务在内存中
-func (s *SJF) WorkInMemoryExcute() {
+func (s *HRF) WorkInMemoryExcute() {
 	if pkg.RemainTimeLessThanZero(s.QueueInMemory[0].RemainingExecuteTime) == true {
 		// 放入完成的队列// 放入完成的队列
 		s.QueueInMemory[0].OverTime = s.ProgressTime
 		s.QueueHasFinish = append(s.QueueHasFinish, s.QueueInMemory[0])
-		s.QueueInMemory = []*Work{}
+		s.QueueInMemory = []*pkg.Work{}
 		return
 	}
 	s.QueueInMemory[0].RemainingExecuteTime = pkg.Sub(s.QueueInMemory[0].RemainingExecuteTime, "5m")
+
+	s.UpdateWaitTime()
 	s.ProgressTime = pkg.Add(s.ProgressTime, "5m")
 }
 
-func (s *SJF) UpdateProgressTime() {
+func (s *HRF) UpdateProgressTime() {
+	// 只要是更新进度条的地方，就需要给已经到来的任务增加等待时间
+	s.UpdateWaitTime()
 	s.ProgressTime = pkg.Add(s.ProgressTime, "5m")
 }
 
-func (s *SJF) Schedue() {
+func (s *HRF) Schedue() {
 	for i := 0; len(s.QueueHasFinish) < 4; i++ {
 		if len(s.QueueInMemory) == 0 {
 			return
 		} else if len(s.QueueInMemory) == 1 {
 			// 调度进入一个作业 然后根据优先级别判断后执行
 			w, isCome := s.JudgeWorkhasCome()
-
 			if isCome {
+				// 意味着有任务
 				w.ArriveMemoryTime = s.ProgressTime
 				s.QueueInMemory = append(s.QueueInMemory, w)
 			} else {
@@ -208,14 +212,14 @@ func (s *SJF) Schedue() {
 	OutPutWorksArriveTimeAndOverTime(s.QueueNotInMemory) */
 }
 
-func (s *SJF) InitRoundTime() {
+func (s *HRF) InitRoundTime() {
 	for _, v := range s.QueueHasFinish {
 		v.RoundTime = pkg.TimeSub(v.OverTime, v.ArriveTime)
 
 	}
 }
 
-func (s *SJF) InitWeights() {
+func (s *HRF) InitWeights() {
 	for _, v := range s.QueueHasFinish {
 		var float64_Minutes1 float64 = v.RoundTime.Minutes()
 		var float64_Minutes2 float64 = v.ExcuteTime.Minutes()
@@ -224,14 +228,14 @@ func (s *SJF) InitWeights() {
 }
 
 // 计算平均周转时间  完成时间-开始时间
-func (s *SJF) GetAverageTurnaRoundTime() time.Duration {
+func (s *HRF) GetAverageTurnaRoundTime() time.Duration {
 	var d time.Duration
 	for _, v := range s.QueueHasFinish {
 		d = pkg.DurationAdd(d, v.RoundTime)
 	}
 	return d
 }
-func (s *SJF) GetAverageTurnaRoundTimeByWeight() float64 {
+func (s *HRF) GetAverageTurnaRoundTimeByWeight() float64 {
 	var d float64
 	for _, v := range s.QueueHasFinish {
 		d = d + v.Weights
@@ -239,20 +243,31 @@ func (s *SJF) GetAverageTurnaRoundTimeByWeight() float64 {
 	return d
 }
 
-func Client() {
+func HRFClient() {
 	s := NewSJF(
-		NewWork(1, "10:00", "30m", 5),
-		NewWork(2, "10:05", "20m", 3),
-		NewWork(3, "10:10", "5m", 4),
-		NewWork(4, "10:20", "10m", 6),
+		pkg.NewWork(1, "10:00", "30m", 5),
+		pkg.NewWork(2, "10:05", "20m", 3),
+		pkg.NewWork(3, "10:10", "5m", 4),
+		pkg.NewWork(4, "10:20", "10m", 6),
 	)
+	/*
+		1: 10:00～10:05 剩余25
+		2: 10:05～10：25 2被调度进入内存 并且2执行结束 3等待15m 4 等待5m  3的响应比例15+5)/5=4   4的响应比例 (5+10)/10=1.5
+		3：10:25~10:30  3被调度进入内存 并且3执行结束
+		4：10:30~10:40  4被调度进入内存 并且4执行结束
+		5：10:40~11:05  1被调度进入内存 并且1执行结束
+	*/
+
+	fmt.Println("Input information:")
+	pkg.OutPutWorksArriveTimeAndOverTime(s.QueueInMemory)
+	pkg.OutPutWorksArriveTimeAndOverTime(s.QueueNotInMemory)
 	s.Schedue()
 	s.InitRoundTime()
 	s.InitWeights()
-	OutPutWorksArriveTimeAndOverTime(s.QueueHasFinish)
+	fmt.Println("Information after schedued:")
+	pkg.OutPutWorksArriveTimeAndOverTime(s.QueueHasFinish)
 	r := s.GetAverageTurnaRoundTime() / 4
 	fmt.Printf("Round Time is %v \n", r)
 	t := s.GetAverageTurnaRoundTimeByWeight() / 4
 	fmt.Printf("Round Time By Weights is %v \n", t)
-
 }

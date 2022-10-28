@@ -91,6 +91,20 @@ func Sub(t time.Duration, durartion string) time.Duration {
 	return result
 }
 
+// 剩余的执行时间
+func TimeDurationAdd(d1 time.Duration, durartion string) time.Duration {
+	now := time.Now()
+	d2, err := TimeDurationFormat(durartion)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	time1 := TimeAdd(now, d1)
+	time2 := TimeAdd(time1, d2)
+	result := time2.Sub(now)
+	return result
+}
+
 func RemainTimeLessThanZero(t time.Duration) bool {
 	time2, err := TimeDurationFormat("0m")
 	if err != nil {
