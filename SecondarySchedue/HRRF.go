@@ -77,18 +77,19 @@ func (s *HRRF) JudgeWorkhasCome() (*pkg.Work, bool) {
 	}
 
 	if len(hasArrrice) > 1 {
-		sort.Slice(s.QueueNotInMemory, func(i, j int) bool {
-			if int(s.QueueNotInMemory[i].Level) < int(s.QueueNotInMemory[j].Level) {
+		// 在已经到达的任务下选择
+		sort.Slice(hasArrrice, func(i, j int) bool {
+			if hasArrrice[i].Level < hasArrrice[j].Level {
 				return true
 			} else {
 				return false
 			}
 		})
-		temp := s.QueueNotInMemory[0]
-		s.QueueNotInMemory = s.QueueNotInMemory[1:]
+		temp := hasArrrice[0]
+		// 然后遍历删除该任务
+		s.DeleteWorkNotInMemoryById(temp.Id)
 		return temp, true
 	} else if len(hasArrrice) == 1 {
-
 		if len(s.QueueNotInMemory) > 1 {
 			temp := hasArrrice[0]
 			s.DeleteWorkNotInMemoryById(temp.Id)
@@ -204,12 +205,17 @@ func (s *HRRF) GetAverageTurnaRoundTimeByWeight() float64 {
 }
 
 func HRRFClient() {
-	s := NewSJF(
+	s := NewHRRF(
 		pkg.NewWork(1, "10:00", "40m", 5),
-		pkg.NewWork(2, "10:20", "30m", 3),
+		pkg.NewWork(2, "10:05", "30m", 3),
 		pkg.NewWork(3, "10:30", "50m", 4),
 		pkg.NewWork(4, "10:50", "20m", 6),
 	)
+	/*
+		10:00
+
+
+	*/
 	fmt.Println("Input information:")
 	pkg.OutPutWorksArriveTimeAndOverTime(s.QueueInMemory)
 	pkg.OutPutWorksArriveTimeAndOverTime(s.QueueNotInMemory)

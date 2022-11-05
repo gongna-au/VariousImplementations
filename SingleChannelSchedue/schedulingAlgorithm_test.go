@@ -1,6 +1,9 @@
 package SingleChannelSchedue
 
-import "testing"
+import (
+	"github.com/VariousImplementations/SingleChannelSchedue/pkg"
+	"testing"
+)
 
 func TestHRRF(t *testing.T) {
 	ClientHRRF()

@@ -3,9 +3,10 @@ package SecondarySchedue
 import (
 	"errors"
 	"fmt"
-	"github.com/VariousImplementations/SecondarySchedue/pkg"
 	"sort"
 	"time"
+
+	"github.com/VariousImplementations/SecondarySchedue/pkg"
 )
 
 // 作业调度采用最短作业优先 进程调度采用最短剩余执行时间抢占式调度算法
@@ -74,11 +75,10 @@ func (s *SJF) JudgeWorkhasCome() (*pkg.Work, bool) {
 			hasArrrice = append(hasArrrice, v)
 		}
 	}
-
 	if len(hasArrrice) > 1 {
 		// 在已经到达的任务下选择
 		sort.Slice(hasArrrice, func(i, j int) bool {
-			if int(hasArrrice[i].RemainingExecuteTime) < int(hasArrrice[j].RemainingExecuteTime) {
+			if int(hasArrrice[i].ExcuteTime) < int(hasArrrice[j].ExcuteTime) {
 				return true
 			} else {
 				return false
@@ -107,7 +107,7 @@ func (s *SJF) JudgeWorkhasCome() (*pkg.Work, bool) {
 
 }
 
-// 现在有两个任务
+// 现在有两个任务 进程调度中间，谁剩余的执行时间越少，谁就先执行
 func (s *SJF) WorkInMemoryExcuteByLevel() {
 	sort.Slice(s.QueueInMemory, func(i, j int) bool {
 		if int(s.QueueInMemory[i].RemainingExecuteTime) < int(s.QueueInMemory[j].RemainingExecuteTime) {
@@ -205,13 +205,24 @@ func (s *SJF) GetAverageTurnaRoundTimeByWeight() float64 {
 	return d
 }
 
+// 进程调度是根据作业估计的运行时间长短来决定
 func SJFClient() {
 	s := NewSJF(
-		pkg.NewWork(1, "10:00", "30m", 5),
-		pkg.NewWork(2, "10:05", "20m", 3),
-		pkg.NewWork(3, "10:10", "5m", 4),
-		pkg.NewWork(4, "10:20", "10m", 6),
+		pkg.NewWork(1, "10:00", "30m", 0),
+		pkg.NewWork(2, "10:05", "20m", 0),
+		pkg.NewWork(3, "10:10", "5m", 0),
+		pkg.NewWork(4, "10:20", "10m", 0),
 	)
+	/*
+		10:00 ～ 10:05  任务1执行5min 剩余25min
+		10:05 ～ 10:10  任务2被调度 ，任务2要执行20min  任务1等待 任务2执行5min 剩余15mim
+		10:10 ～ 10:20  任务1 ，2 在内存，不再调度任务，任务2剩余15mim， 任务1剩余25min ，任务1等待 ，任务2执行10min ，任务2剩余5mim
+		10:20 ～ 10:25  任务2剩余5mim ，任务2执行5min结束
+		10:25 ～ 10:30  任务3需要5mim ，任务4需要10mim，任务3被调度进入， 任务3需要5mim 任务1需要25min，任务3执行5min结束
+		10:30 ～ 10:40  任务4被调度,任务4执行10min结束
+		10:40 ～ 11:05  任务1被调度,任务1执行25min结束
+		2 3 4 1  的顺序执行结束
+	*/
 
 	fmt.Println("Input information:")
 	pkg.OutPutWorksArriveTimeAndOverTime(s.QueueInMemory)
