@@ -39,6 +39,7 @@ func NewSJFLevel(w ...*pkg.Work) *SJFLevel {
 		ProgressTime:     arrive,
 	}
 }
+
 func (s *SJFLevel) DeleteWorkNotInMemoryById(id int) {
 	var index int
 	for k, v := range s.QueueNotInMemory {
