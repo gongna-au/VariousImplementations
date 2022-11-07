@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/VariousImplementations/SecondarySchedue/pkg"
 	"github.com/google/uuid"
@@ -54,8 +53,6 @@ type ProcessControlBlock struct {
 	CPUStatus string
 	// 优先级
 	Priority int
-	// 被分配的时间份额
-	AllottedTime time.Duration
 	// 上一个进程块
 	LastBlock *ProcessControlBlock
 	// 下一个进程块
@@ -183,12 +180,12 @@ type PCBLinkedListChain struct {
 
 	// 优先级
 	Priority int
-	// 时间额度
-	TimeQuota time.Duration
 	// 保存一个队列头部的数据
 	HeadBlock *ProcessControlBlock
 	// 保存队列尾部的数据
 	TailBlock *ProcessControlBlock
+	// 被分配的时间份额
+	AllottedTime string
 }
 
 func NewPCBLinkedListChain(pri int) *PCBLinkedListChain {
@@ -199,14 +196,25 @@ func NewPCBLinkedListChain(pri int) *PCBLinkedListChain {
 	}
 }
 
-func (p *PCBLinkedListChain) SetPCBLinkedListChainTimeQuota(t time.Duration) *PCBLinkedListChain {
-	p.TimeQuota = t
+func (p *PCBLinkedListChain) SetPCBLinkedListChainAllottedTime(time string) *PCBLinkedListChain {
+	p.AllottedTime = time
 	return p
+}
+
+func (p *PCBLinkedListChain) SetAllottedTime(time string) {
+	p.AllottedTime = time
 }
 
 func (q *PCBLinkedListChain) GetLastProcessControlElem() (*ProcessControlBlock, error) {
 	if q.TailBlock != nil {
 		return q.TailBlock, nil
+	}
+	return nil, errors.New("Queue has not any process control block")
+}
+
+func (q *PCBLinkedListChain) GetHeadProcessControlElem() (*ProcessControlBlock, error) {
+	if q.HeadBlock != nil {
+		return q.HeadBlock, nil
 	}
 	return nil, errors.New("Queue has not any process control block")
 }
@@ -252,5 +260,18 @@ func (q *PCBLinkedListChain) Pop() *ProcessControlBlock {
 	}
 	fmt.Println("Error:", ErrQueueEmpty)
 	return nil
+}
 
+func (q *PCBLinkedListChain) Traverse() {
+	current := q.HeadBlock
+	//fmt.Println("process in  queue")
+	for {
+		if current != nil {
+			fmt.Println("WorkId:", current.Work.Id, "ProcessId:", current.Id)
+			current = current.NextBlock
+		} else {
+			break
+		}
+	}
+	//fmt.Println()
 }

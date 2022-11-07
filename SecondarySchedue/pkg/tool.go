@@ -39,14 +39,21 @@ func TimeFormat(str string) (time.Time, error) {
 	}
 }
 
-// time1 < time2 true
+func Format(str string) time.Time {
+	str = "2016-07-25 " + str + ":00"
+	layout := "2006-01-02 15:04:05"
+	t, _ := time.Parse(layout, str)
+	t.Format("2006.01.02 15:04:05")
+	return t
+}
+
+// time1 <= time2 true
 func TimeCompare(time1 time.Time, time2 time.Time) bool {
 	if time1.Before(time2) || time1.Equal(time2) {
 		return true
 	} else {
 		return false
 	}
-
 }
 
 func TimeAdd(t1 time.Time, t2 time.Duration) time.Time {

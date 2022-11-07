@@ -62,3 +62,17 @@ func OutPutWorksWaitTime(w []*Work) {
 		fmt.Printf("\nId:%-2d ArriveTime:%-8v ArriveMemoryTime:%-8v OverTime:%-8v WaitTimeTime %-8v RoundTime %-8v Weights %-8.4f \n", v.Id, v.ArriveTime, v.ArriveMemoryTime, v.OverTime, v.WaitTime, v.RoundTime, v.Weights)
 	}
 }
+
+func OutPutWorksArriveTime(w []*Work) {
+	for _, v := range w {
+		fmt.Printf("\nId:%-2d ArriveTime:%-8v  ExcuteTime:%-8v", v.Id, v.ArriveTime, v.ExcuteTime)
+	}
+	fmt.Println("")
+}
+
+func OutPutWorksArriveAndOverTime(w []*Work) {
+	for _, v := range w {
+		fmt.Printf("\nId:%-2d ArriveTime:%-8v OverTime:%-8v  ", v.Id, v.ArriveTime, v.OverTime)
+	}
+	fmt.Println()
+}
