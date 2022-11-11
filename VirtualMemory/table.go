@@ -3,16 +3,16 @@ package VirtualMemory
 import "fmt"
 
 type PageTableItem struct {
-	// 页号
-	PageId int
+	// 虚拟页号
+	VirtualPageId int
 	// 物理⻚号
 	PhysicalPageId int
 	// 是否在内存
 	IsInMemory bool
-	// 在硬盘中的地址
-	LocationInHardDisk int
+	// 物理块号
+	PhysicalItemId int
 	// 被调入内存使用的次数
-	UsedNum int
+	BeScheduedIndMemoryNum int
 	// 被调入内存是否被修改
 	IsChanged bool
 }
@@ -24,8 +24,9 @@ func ProgramWantLoadPage() {
 		PageId:             50,
 		PhysicalPageId:     100,
 		IsInMemory:         false,
-		LocationInHardDisk: 100,
-		UsedNum:            0,
+		// 如果一页是3块
+		VirtualPageId: 100*3,
+	BeScheduedIndMemoryNum:            0,
 		IsChanged:          false,
 	}
 	var tableLength int = 100

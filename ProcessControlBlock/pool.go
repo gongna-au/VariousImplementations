@@ -34,6 +34,7 @@ type PCBdPool struct {
 }
 
 func NewPool(cap uint64, num uint64) (*PCBdPool, error) {
+
 	if cap <= 0 {
 		return nil, ErrInvalidPoolCap
 	}
