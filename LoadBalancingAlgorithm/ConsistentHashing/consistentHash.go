@@ -1,12 +1,5 @@
 package ConsistentHashing
 
-import (
-	"fmt"
-	"hash/crc32"
-
-	"github.com/golang/protobuf/ptypes/any"
-)
-
 type Hash func(data []byte) int32
 type UInt32Slice []uint32
 
