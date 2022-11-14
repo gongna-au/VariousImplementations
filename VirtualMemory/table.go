@@ -1,45 +1,89 @@
 package VirtualMemory
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+	"sync"
+)
 
-type PageTableItem struct {
-	// 虚拟页号
-	VirtualPageId int
-	// 物理⻚号
-	PhysicalPageId int
-	// 是否在内存
-	IsInMemory bool
-	// 物理块号
-	PhysicalItemId int
-	// 被调入内存使用的次数
-	BeScheduedIndMemoryNum int
-	// 被调入内存是否被修改
-	IsChanged bool
+type ActualCallPages struct {
+	Pages []string
 }
 
-func ProgramWantLoadPage() {
-	// 模拟程序要访问100这个页面 load 100
-	var item = PageTableItem{
-
-		PageId:             50,
-		PhysicalPageId:     100,
-		IsInMemory:         false,
-		// 如果一页是3块
-		VirtualPageId: 100*3,
-	BeScheduedIndMemoryNum:            0,
-		IsChanged:          false,
+func Create(pages ...string) *ActualCallPages {
+	return &ActualCallPages{
+		Pages: append([]string{}, pages...),
 	}
-	var tableLength int = 100
-	// 模拟保存页面的页表 保存了100个页面 TLB 中间的快表
-	table := make(map[int]int, 100)
-	// 假设我们要查找的这个表就在快表里面
-	table[3] = 50
-	if item.PageId > tableLength {
-		fmt.Println("内存越界异常")
-	} else {
-		k, ok := table[page]
-		if ok {
+}
 
+func (a *ActualCallPages) Travese() {
+	fmt.Println("Actually System Call Page Order:")
+	for _, v := range a.Pages {
+		fmt.Print(v, "  ")
+	}
+}
+
+type HardDisk struct {
+	maxPageNum int64
+	Data       map[string]*ByteData
+}
+
+type ByteData struct {
+	content any
+}
+
+func NewByteData(content any) *ByteData {
+	return &ByteData{
+		content: content,
+	}
+}
+
+var hardDisk *HardDisk
+var once sync.Once
+
+// 用最大的页数来初始化磁盘
+// 每一页都有对应的数据
+func HardDiskInit(maxPageNum int64, data ...*ByteData) *HardDisk {
+	once.Do(func() {
+		result := make(map[string]*ByteData, maxPageNum)
+		for k, v := range data {
+			result[strconv.Itoa(k)] = v
 		}
+		hardDisk = &HardDisk{
+			maxPageNum: maxPageNum,
+			Data:       result,
+		}
+	})
+	return hardDisk
+}
+
+func GetHardDisk() *HardDisk {
+	return hardDisk
+}
+
+func (h *HardDisk) GetData(key string) string {
+	if v, ok := h.Data[key]; ok {
+		return fmt.Sprintf("%s", v.content)
+	} else {
+		return "0"
+	}
+}
+
+// 每个页面对应的具体数据被放入
+type Node struct {
+	Key   string //每个节点的唯一标识，作为key储存到lru的cache里
+	Value []byte //携带的数据
+}
+
+func NewNode(key string, node []byte) Node {
+	return Node{
+		Key:   key,
+		Value: node,
+	}
+}
+
+func (n *Node) PrintlnNode() {
+	if n != nil {
+		fmt.Println("Node key: ", n.Key, " Node value:", string(n.Value))
 	}
 }
